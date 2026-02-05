@@ -53,6 +53,13 @@ individual undo events (squashing them into a single edit event in the
 undo history). To cancel, type ~C-c C-k~.  You can also ediff the
 proposed chain of undo's by typing ~C-c C-d~.
 
+*** Read-only buffers
+
+The ~undo-propose~ also works on read-only buffers (e.g., =magit-diff=,
+=help-mode=). This provides a handy way to create a temporary
+reference copy of any buffer. The snapshot can be kept open as a
+reference while continuing to work in other buffers.
+
 ** Configuration
 *** Adding commands (e.g. redo)
 

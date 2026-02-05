@@ -2,7 +2,7 @@
 
 ;; Author: Jack Kamm
 ;; Maintainer: Jack Kamm
-;; Version: 4.0.0
+;; Version: 4.1.0
 ;; Package-Requires: ((emacs "24.3"))
 ;; Homepage: https://github.com/jackkamm/undo-propose.el
 ;; Keywords: convenience, files, undo, redo, history
@@ -70,7 +70,8 @@ The default window behavior has also changed. Use
   :type 'list
   :group 'undo-propose)
 
-(defvar undo-propose-parent nil "Parent buffer of ‘undo-propose’ buffer.")
+(defvar undo-propose-parent nil "Parent buffer of 'undo-propose' buffer.")
+(defvar undo-propose-read-only-source nil "Non-nil if source buffer had no undo history.")
 
 (defun undo-propose--message (content)
   "Message CONTENT, possibly with prefix \"undo-propose: \"."
@@ -97,24 +98,35 @@ If already inside an `undo-propose' buffer, this will simply call `undo'."
       (undo)
     (let ((mode major-mode)
           (orig-buffer (current-buffer))
-          (list-copy (undo-copy-list buffer-undo-list))
+          (no-undo-history (eq buffer-undo-list t))
+          (list-copy (if (eq buffer-undo-list t)
+                         nil
+                       (undo-copy-list buffer-undo-list)))
           (pos (point))
           (win-start (window-start))
           (tmp-buffer (generate-new-buffer
                        (concat "*Undo Propose: "
                                (buffer-name) "*"))))
       (pop-to-buffer tmp-buffer)
-      (funcall mode)
-      (insert-buffer-substring orig-buffer 1 (1+ (buffer-size orig-buffer)))
-      (goto-char pos)
+      (if no-undo-history
+          (special-mode)
+        (funcall mode))
+      (let ((inhibit-read-only t))
+        (insert-buffer-substring orig-buffer 1 (1+ (buffer-size orig-buffer)))
+        (goto-char pos))
       (set-window-start (selected-window) win-start)
       (setq-local buffer-undo-list list-copy)
       (setq-local buffer-read-only t)
       (setq-local undo-propose-parent orig-buffer)
+      (setq-local undo-propose-read-only-source no-undo-history)
       (undo-propose-mode 1)
-      (undo-propose-copy-markers)
+      (unless no-undo-history
+        (undo-propose-copy-markers))
       (run-hooks 'undo-propose-entry-hook)
-      (undo-propose--message "C-c C-c to commit, C-c C-s to squash commit, C-c C-k to cancel, C-c C-d to diff"))))
+      (undo-propose--message
+       (if no-undo-history
+           "Reference snapshot. C-c C-k to close"
+         "C-c C-c to commit, C-c C-s to squash commit, C-c C-k to cancel, C-c C-d to diff")))))
 
 (define-minor-mode undo-propose-mode
   "Minor mode for `undo-propose'."
@@ -192,9 +204,11 @@ buffer contents are copied."
   (run-hooks 'undo-propose-done-hook))
 
 (defun undo-propose-diff ()
-  "View differences between ‘undo-propose’ buffer and its parent using `ediff'."
+  "View differences between 'undo-propose' buffer and its parent using `ediff'."
   (interactive)
-  (ediff-buffers undo-propose-parent (current-buffer)))
+  (if undo-propose-read-only-source
+      (undo-propose--message "Diff not available for reference snapshots")
+    (ediff-buffers undo-propose-parent (current-buffer))))
 
 (defvar-local undo-propose-marker-map nil)
 
