@@ -2,7 +2,7 @@
 
 ;; Author: Jack Kamm
 ;; Maintainer: Jack Kamm
-;; Version: 4.1.0
+;; Version: 4.2.0
 ;; Package-Requires: ((emacs "24.3"))
 ;; Homepage: https://github.com/jackkamm/undo-propose.el
 ;; Keywords: convenience, files, undo, redo, history
@@ -125,7 +125,7 @@ If already inside an `undo-propose' buffer, this will simply call `undo'."
       (run-hooks 'undo-propose-entry-hook)
       (undo-propose--message
        (if no-undo-history
-           "Reference snapshot. C-c C-k to close"
+           "Reference snapshot. C-c C-d to diff, C-c C-k to close"
          "C-c C-c to commit, C-c C-s to squash commit, C-c C-k to cancel, C-c C-d to diff")))))
 
 (define-minor-mode undo-propose-mode
@@ -204,11 +204,16 @@ buffer contents are copied."
   (run-hooks 'undo-propose-done-hook))
 
 (defun undo-propose-diff ()
-  "View differences between 'undo-propose' buffer and its parent using `ediff'."
+  "View differences between 'undo-propose' buffer and another buffer using `ediff'.
+For reference snapshots, compares with the buffer in the other window.
+Otherwise, compares with the parent buffer."
   (interactive)
-  (if undo-propose-read-only-source
-      (undo-propose--message "Diff not available for reference snapshots")
-    (ediff-buffers undo-propose-parent (current-buffer))))
+  (let ((compare-buffer (if undo-propose-read-only-source
+                            (window-buffer (next-window))
+                          undo-propose-parent)))
+    (if (or (null compare-buffer) (eq compare-buffer (current-buffer)))
+        (undo-propose--message "No buffer to compare with")
+      (ediff-buffers compare-buffer (current-buffer)))))
 
 (defvar-local undo-propose-marker-map nil)
 
