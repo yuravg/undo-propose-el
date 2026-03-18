@@ -2,7 +2,7 @@
 
 ;; Author: Jack Kamm
 ;; Maintainer: Jack Kamm
-;; Version: 4.2.0
+;; Version: 4.2.1
 ;; Package-Requires: ((emacs "24.3"))
 ;; Homepage: https://github.com/jackkamm/undo-propose.el
 ;; Keywords: convenience, files, undo, redo, history
@@ -130,7 +130,8 @@ If already inside an `undo-propose' buffer, this will simply call `undo'."
 
 (define-minor-mode undo-propose-mode
   "Minor mode for `undo-propose'."
-  nil " UndoP" (make-sparse-keymap))
+  :lighter " UndoP"
+  :keymap (make-sparse-keymap))
 (define-key undo-propose-mode-map (kbd "C-c C-c") 'undo-propose-commit)
 (define-key undo-propose-mode-map (kbd "C-c C-s") 'undo-propose-squash-commit)
 (define-key undo-propose-mode-map (kbd "C-c C-d") 'undo-propose-diff)
