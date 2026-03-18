@@ -1,5 +1,6 @@
 ;;; undo-propose-test.el --- Tests for undo-propose
 
+(require 'ert)
 (require 'undo-propose)
 
 (defmacro with-undoable-temp-buffer (&rest body)
