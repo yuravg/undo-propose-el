@@ -2,7 +2,7 @@
 
 ;; Author: Jack Kamm
 ;; Maintainer: Jack Kamm
-;; Version: 4.2.1
+;; Version: 4.2.2
 ;; Package-Requires: ((emacs "24.3"))
 ;; Homepage: https://github.com/jackkamm/undo-propose.el
 ;; Keywords: convenience, files, undo, redo, history
@@ -45,11 +45,11 @@
 (require 'cl-lib)
 
 (defgroup undo-propose nil
-  "Simple and safe undo navigation"
+  "Simple and safe undo navigation."
   :group 'convenience)
 
 (defcustom undo-propose-done-hook nil
-  "Hook runs when leaving the temporal buffer."
+  "Hook runs when leaving the temporal buffer, including on cancel."
   :type 'hook
   :group 'undo-propose)
 
@@ -67,10 +67,10 @@ The default window behavior has also changed. Use
 (defcustom undo-propose-marker-list
   '(org-clock-marker org-clock-hd-marker)
   "List of quoted markers to update after running undo-propose."
-  :type 'list
+  :type '(repeat symbol)
   :group 'undo-propose)
 
-(defvar undo-propose-parent nil "Parent buffer of 'undo-propose' buffer.")
+(defvar undo-propose-parent nil "Parent buffer of `undo-propose' buffer.")
 (defvar undo-propose-read-only-source nil "Non-nil if source buffer had no undo history.")
 
 (defun undo-propose--message (content)
@@ -86,11 +86,12 @@ The default window behavior has also changed. Use
 (defun undo-propose ()
   "Navigate undo history in a new temporary buffer.
 \\<undo-propose-mode-map>
-Copies 'current-buffer' and 'buffer-undo-list' to a new temporary buffer,
+Copies `current-buffer' and `buffer-undo-list' to a new temporary buffer,
 which is read-only except for undo commands.  After finished undoing, type
 \\[undo-propose-commit] to accept the chain of undos,
-or \\[undo-propose-squash-commit] to copy the buffer but squash the undo's into a single edit event event.  To cancel, type \\[undo-propose-cancel], and
-to view an ediff type \\[undo-propose-diff].
+or \\[undo-propose-squash-commit] to copy the buffer but squash the undo's into a
+single edit event.  To cancel, type \\[undo-propose-cancel], and to view an
+ediff type \\[undo-propose-diff].
 
 If already inside an `undo-propose' buffer, this will simply call `undo'."
   (interactive)
@@ -205,15 +206,20 @@ buffer contents are copied."
   (run-hooks 'undo-propose-done-hook))
 
 (defun undo-propose-diff ()
-  "View differences between 'undo-propose' buffer and another buffer using `ediff'.
+  "View differences between `undo-propose' buffer and another buffer using `ediff'.
 For reference snapshots, compares with the buffer in the other window.
 Otherwise, compares with the parent buffer."
   (interactive)
-  (let ((compare-buffer (if undo-propose-read-only-source
-                            (window-buffer (next-window))
-                          undo-propose-parent)))
+  (let* ((other-win (next-window nil nil 'visible))
+         (compare-buffer (if undo-propose-read-only-source
+                             (and (not (eq other-win (selected-window)))
+                                  (window-buffer other-win))
+                           undo-propose-parent)))
     (if (or (null compare-buffer) (eq compare-buffer (current-buffer)))
-        (undo-propose--message "No buffer to compare with")
+        (undo-propose--message
+         (if undo-propose-read-only-source
+             "No other window to compare with"
+           "No buffer to compare with"))
       (ediff-buffers compare-buffer (current-buffer)))))
 
 (defvar-local undo-propose-marker-map nil)
