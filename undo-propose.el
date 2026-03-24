@@ -2,7 +2,7 @@
 
 ;; Author: Jack Kamm
 ;; Maintainer: Jack Kamm
-;; Version: 4.2.2
+;; Version: 4.2.3
 ;; Package-Requires: ((emacs "24.3"))
 ;; Homepage: https://github.com/jackkamm/undo-propose.el
 ;; Keywords: convenience, files, undo, redo, history
@@ -210,16 +210,11 @@ buffer contents are copied."
 For reference snapshots, compares with the buffer in the other window.
 Otherwise, compares with the parent buffer."
   (interactive)
-  (let* ((other-win (next-window nil nil 'visible))
-         (compare-buffer (if undo-propose-read-only-source
-                             (and (not (eq other-win (selected-window)))
-                                  (window-buffer other-win))
-                           undo-propose-parent)))
+  (let ((compare-buffer (if undo-propose-read-only-source
+                            (window-buffer (next-window))
+                          undo-propose-parent)))
     (if (or (null compare-buffer) (eq compare-buffer (current-buffer)))
-        (undo-propose--message
-         (if undo-propose-read-only-source
-             "No other window to compare with"
-           "No buffer to compare with"))
+        (undo-propose--message "No buffer to compare with")
       (ediff-buffers compare-buffer (current-buffer)))))
 
 (defvar-local undo-propose-marker-map nil)
