@@ -2,8 +2,8 @@
 
 ;; Author: Jack Kamm
 ;; Maintainer: Jack Kamm
-;; Version: 4.2.3
-;; Package-Requires: ((emacs "24.3"))
+;; Version: 5.0.0
+;; Package-Requires: ((emacs "29.1") (transient "0.3.0"))
 ;; Homepage: https://github.com/jackkamm/undo-propose.el
 ;; Keywords: convenience, files, undo, redo, history
 
@@ -43,6 +43,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'transient)
 
 (defgroup undo-propose nil
   "Simple and safe undo navigation."
@@ -126,20 +127,14 @@ If already inside an `undo-propose' buffer, this will simply call `undo'."
       (run-hooks 'undo-propose-entry-hook)
       (undo-propose--message
        (if no-undo-history
-           "Reference snapshot. C-c C-d to diff, C-c C-k to close"
-         "C-c C-c to commit, C-c C-s to squash commit, C-c C-k to cancel, C-c C-d to diff")))))
+           "Reference snapshot. Type ? for help"
+         "Undo propose. Type ? for help")))))
 
-(define-minor-mode undo-propose-mode
-  "Minor mode for `undo-propose'."
-  :lighter " UndoP"
-  :keymap (make-sparse-keymap))
-(define-key undo-propose-mode-map (kbd "C-c C-c") 'undo-propose-commit)
-(define-key undo-propose-mode-map (kbd "C-c C-s") 'undo-propose-squash-commit)
-(define-key undo-propose-mode-map (kbd "C-c C-d") 'undo-propose-diff)
-(define-key undo-propose-mode-map (kbd "C-c C-k") 'undo-propose-cancel)
+(defvar undo-propose-mode-map (make-sparse-keymap)
+  "Keymap for `undo-propose-mode'.")
 
 (defmacro undo-propose-wrap (command)
-  "Wrap COMMAND so it is useable within the ‘undo-propose’ buffer."
+  "Wrap COMMAND so it is useable within the `undo-propose' buffer."
   `(define-key undo-propose-mode-map [remap ,command]
      (lambda ()
        (interactive)
@@ -150,7 +145,7 @@ If already inside an `undo-propose' buffer, this will simply call `undo'."
 (undo-propose-wrap undo-only)
 
 (defun undo-propose-commit ()
-  "Quit and copy ‘undo-propose’ buffer and undo-ring back to the parent buffer."
+  "Quit and copy `undo-propose' buffer and undo-ring back to the parent buffer."
   (interactive)
   (let ((win (selected-window))
         (orig-buffer undo-propose-parent)
@@ -199,7 +194,7 @@ buffer contents are copied."
   'undo-propose-squash-commit "3.0.0")
 
 (defun undo-propose-cancel ()
-  "Kill ‘undo-propose’ buffer without copying back to its parent."
+  "Kill `undo-propose' buffer without copying back to its parent."
   (interactive)
   (quit-restore-window (selected-window) 'kill)
   (undo-propose--message "cancel")
@@ -244,6 +239,48 @@ Otherwise, compares with the parent buffer."
                         (eq (marker-buffer orig-marker) undo-propose-parent))
                (move-marker orig-marker (marker-position new-marker)
                             undo-propose-parent)))))
+
+;;;; Help mode
+
+;;;###autoload (autoload 'git-manager-dispatch "git-manager-mode" nil t)
+(transient-define-prefix undo-propose-dispatch ()
+  "Transient menu for undo-propose operations."
+  ["undo-propose Actions commands"
+   [("c" "Commit" undo-propose-commit)
+    ("s" "Squash commit" undo-propose-squash-commit)
+    ("k" "Cancel" undo-propose-cancel)]]
+  [["View"
+    ("d" "Diff/Ediff" undo-propose-diff)
+    ("?" "Help" undo-propose-dispatch :transient t)]]
+  [["Exit"
+    ("q" "Quit menu" transient-quit-one)]])
+
+;;;; Keymap
+
+(defvar undo-propose-mode-map (make-sparse-keymap)
+  "Keymap for `undo-propose-mode'.")
+
+(let ((map undo-propose-mode-map))
+  ;; -- Actions --
+  (define-key map (kbd "C-c C-c") #'undo-propose-commit)
+  (define-key map (kbd "C-c C-s") #'undo-propose-squash-commit)
+  (define-key map (kbd "C-c C-d") #'undo-propose-diff)
+  (define-key map (kbd "C-c C-k") #'undo-propose-cancel)
+  ;; -- Suppress special-mode's q binding --
+  (define-key map (kbd "q") #'undo-propose-dispatch)
+  ;; -- Transient / Help --
+  (define-key map (kbd "?") #'undo-propose-dispatch)
+  (define-key map (kbd "h") #'undo-propose-dispatch)
+  (define-key map [remap self-insert-command] #'undo-propose-dispatch))
+
+;;; Minor mode
+
+;;;###autoload
+(define-minor-mode undo-propose-mode
+  "Minor mode for `undo-propose'."
+  :lighter " UndoP"
+  :keymap (make-sparse-keymap))
+
 
 (provide 'undo-propose)
 

@@ -142,6 +142,13 @@ bugs that corrupt the undo history.
 - [[https://www.reddit.com/r/emacs/comments/6yzwic/how_emacs_undo_works/][reddit.com/r/emacs: How Emacs undo works]]
 
 ** Changes
+*** 5.0.0
+
+Requires Emacs 29.1+ and adds a new dependency on =transient= (0.3.0+).
+
+A transient help menu is now available in the undo-propose buffer via
+~?~ or ~h~, listing all available commands.
+
 *** 4.0.0
 
 Switched to using the ~display-buffer~ framework to configure window
